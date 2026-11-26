@@ -1,4 +1,4 @@
-import { ExternalLink, Search } from 'lucide-react';
+import { Download, ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
 import { AccountEvaluation } from '../types/simulation';
 
@@ -42,12 +42,50 @@ export function MessageLogsView({ evaluations, onSelectAccount }: MessageLogsVie
     );
   });
 
+  function handleExportCsv() {
+    const header = [
+      'timestamp',
+      'account_id',
+      'handle',
+      'follower_id',
+      'message_text',
+      'link_url',
+      'device_id',
+      'location',
+      'signal_flags',
+    ];
+    const escapeCell = (val: string) => `"${val.replace(/"/g, '""')}"`;
+    const rows = filtered.map(({ msg, account, flagInfo }) =>
+      [
+        msg.timestamp,
+        msg.account_id,
+        account.handle,
+        msg.follower_id,
+        msg.message_text,
+        msg.link_url ?? '',
+        msg.device_id,
+        msg.location,
+        flagInfo?.reasons.join('; ') || 'Normal',
+      ]
+        .map(escapeCell)
+        .join(',')
+    );
+    const csv = [header.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `message-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-base font-semibold text-slate-900">
-            All Synthetic Message Logs
+            All Message Logs
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Showing account_id, follower_id, message_text, link_url, timestamp, device_id, and location.
@@ -86,6 +124,16 @@ export function MessageLogsView({ evaluations, onSelectAccount }: MessageLogsVie
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-medium text-slate-700 whitespace-nowrap"
+          >
+            <Download className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 

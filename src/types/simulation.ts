@@ -16,6 +16,7 @@ export interface SimulatedAccount {
   account_id: string;
   handle: string;
   display_name: string;
+  platform?: string;
   category: string;
   follower_count: number;
   normal_hours_start: number; // 0-23
@@ -98,4 +99,43 @@ export interface LoginEvent {
   status_after_login: AccountStatus;
 }
 
-export type NavSection = 'overview' | 'login' | 'logs' | 'alerts' | 'rules';
+export interface OutboundWebhook {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  created_at: string;
+  last_status?: string;
+  last_dispatched_at?: string;
+}
+
+export interface AiAccountAnalysis {
+  account_id: string;
+  analyzed_at: string;
+  ai_risk_score: number;
+  phishing_category: string;
+  automated_bot_likelihood: 'Low' | 'Medium' | 'High';
+  summary_en: string;
+  summary_tanglish: string;
+  recommended_action: string;
+}
+
+export interface DashboardStatePayload {
+  accounts: SimulatedAccount[];
+  logs: MessageLog[];
+  loginEvents: LoginEvent[];
+  alerts: AlertRecord[];
+  config: DetectionConfig;
+  outboundWebhooks: OutboundWebhook[];
+  aiAnalyses: Record<string, AiAccountAnalysis>;
+  ingestApiKey: string;
+}
+
+export type NavSection =
+  | 'overview'
+  | 'login'
+  | 'integrations'
+  | 'import'
+  | 'logs'
+  | 'alerts'
+  | 'rules';

@@ -128,6 +128,12 @@ export function AccountsTable({
                     <td className="py-3 px-5">
                       <div className="font-medium text-slate-900">{ev.account.handle}</div>
                       <div className="text-xs text-slate-500">
+                        {ev.account.platform && (
+                          <>
+                            <span className="font-medium text-slate-700">{ev.account.platform}</span>
+                            <span aria-hidden="true"> · </span>
+                          </>
+                        )}
                         <span>{ev.account.display_name}</span>
                         <span aria-hidden="true"> · </span>
                         <span>{ev.account.category}</span>
@@ -174,7 +180,7 @@ export function AccountsTable({
                         }}
                         className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 hover:text-slate-900 whitespace-nowrap"
                       >
-                        <span>Details</span>
+                        <span>View All</span>
                         <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </td>

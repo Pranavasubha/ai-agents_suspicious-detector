@@ -1,26 +1,36 @@
 import {
   AlertTriangle,
+  Bot,
   CheckCircle2,
   ExternalLink,
   MessageSquareWarning,
   Send,
   ShieldAlert,
+  Trash2,
   UserCheck,
   Zap,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
   FOLLOWER_ALERT_TEXT,
   OWNER_ALERT_TEXT,
   formatHourRange,
 } from '../engine/detectionEngine';
-import { AccountEvaluation, DetectionConfig } from '../types/simulation';
+import {
+  AccountEvaluation,
+  AiAccountAnalysis,
+  DetectionConfig,
+} from '../types/simulation';
 import { StatusIndicator, getScoreColorClasses } from './StatusBadge';
 
 interface AccountDetailPanelProps {
   evaluation: AccountEvaluation | null;
   config: DetectionConfig;
+  aiAnalysis?: AiAccountAnalysis;
   onInjectHackForAccount: (accountId: string) => void;
   onInjectNormalForAccount: (accountId: string) => void;
+  onRunAiAnalysis: (accountId: string) => Promise<void>;
+  onDeleteAccount: (accountId: string) => Promise<void>;
 }
 
 function formatTimestamp(iso: string): string {
@@ -36,14 +46,20 @@ function formatTimestamp(iso: string): string {
 export function AccountDetailPanel({
   evaluation,
   config,
+  aiAnalysis,
   onInjectHackForAccount,
   onInjectNormalForAccount,
+  onRunAiAnalysis,
+  onDeleteAccount,
 }: AccountDetailPanelProps) {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   if (!evaluation) {
     return (
       <section className="bg-white border border-slate-200 rounded-xl p-8 text-center">
         <p className="text-sm text-slate-600">
-          Select an account from the table above to inspect its synthetic message logs and rule breakdown.
+          Add a monitored account or select an account from the table above to inspect its logs, rule breakdown, and AI analysis.
         </p>
       </section>
     );
@@ -59,12 +75,26 @@ export function AccountDetailPanel({
   const sampleFlaggedMessage =
     messages.find((m) => message_flags[m.id]?.reasons.length > 0) || messages[0];
 
+  async function handleAiClick() {
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      await onRunAiAnalysis(account.account_id);
+    } catch (err) {
+      setAiError(
+        err instanceof Error ? err.message : 'Unable to run Gemini AI analysis.'
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <section
       aria-label={`Account forensics for ${account.handle}`}
       className="bg-white border border-slate-200 rounded-xl overflow-hidden"
     >
-      {/* Account Header & Quick Simulation Actions */}
+      {/* Account Header & Quick Actions */}
       <div className="px-6 py-5 border-b border-slate-200 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
@@ -79,7 +109,7 @@ export function AccountDetailPanel({
             <span>{account.category}</span>
             <span aria-hidden="true">·</span>
             <span className="font-mono tabular-nums">
-              {account.follower_count.toLocaleString()} simulated followers
+              {account.follower_count.toLocaleString()} followers
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 mt-2">
@@ -102,14 +132,14 @@ export function AccountDetailPanel({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => onInjectNormalForAccount(account.account_id)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors whitespace-nowrap shrink-0"
           >
             <Send className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
-            <span>Send Normal DM</span>
+            <span>Test Normal DM</span>
           </button>
 
           <button
@@ -119,6 +149,15 @@ export function AccountDetailPanel({
           >
             <Zap className="w-3.5 h-3.5 text-red-700" aria-hidden="true" />
             <span>Inject Hack Burst</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onDeleteAccount(account.account_id)}
+            aria-label={`Remove ${account.handle}`}
+            className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-red-50 text-slate-500 hover:text-red-700 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -188,11 +227,83 @@ export function AccountDetailPanel({
         </div>
       </div>
 
-      {/* Dual Alert Simulation Output */}
+      {/* Gemini AI Semantic Phishing & Bot Analysis */}
+      <div className="px-6 py-5 border-b border-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4 text-slate-700 shrink-0" aria-hidden="true" />
+            <div>
+              <h3 className="font-display text-sm font-semibold text-slate-900">
+                AI Semantic Phishing &amp; Bot Analysis
+              </h3>
+              <p className="text-xs text-slate-500">
+                Evaluates paraphrased social engineering, impersonation, and bot patterns on the server.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={aiLoading}
+            onClick={handleAiClick}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-medium transition-colors whitespace-nowrap shrink-0"
+          >
+            <Bot className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>{aiLoading ? 'Analyzing...' : aiAnalysis ? 'Re-run AI Audit' : 'Run AI Audit'}</span>
+          </button>
+        </div>
+
+        {aiError && (
+          <div role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 mb-3">
+            {aiError}
+          </div>
+        )}
+
+        {aiAnalysis ? (
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-semibold text-slate-900">
+                  Category: {aiAnalysis.phishing_category}
+                </span>
+                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span className="text-slate-700">
+                  Bot Likelihood: <strong>{aiAnalysis.automated_bot_likelihood}</strong>
+                </span>
+              </div>
+              <span className="font-mono font-semibold tabular-nums text-slate-900">
+                AI Risk: {aiAnalysis.ai_risk_score}/100
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="font-semibold text-slate-800 mb-1">English Assessment</div>
+                <p className="text-slate-600 leading-relaxed">{aiAnalysis.summary_en}</p>
+              </div>
+              <div>
+                <div className="font-semibold text-slate-800 mb-1">Tanglish Assessment</div>
+                <p className="text-slate-600 leading-relaxed">{aiAnalysis.summary_tanglish}</p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 text-slate-700">
+              <strong className="font-semibold text-slate-900">Recommended Action:</strong>{' '}
+              {aiAnalysis.recommended_action}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500">
+            Click “Run AI Audit” to evaluate this account’s message semantics with Gemini AI.
+          </p>
+        )}
+      </div>
+
+      {/* Dual Alert Output */}
       <div className="px-6 py-5 border-b border-slate-200 bg-slate-50/60">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-display text-sm font-semibold text-slate-900">
-            Simulated Alert Output
+            Alert Output
           </h3>
           <span className="text-xs text-slate-500 font-mono tabular-nums">
             Alert threshold: ≥{config.flagThreshold} pts
@@ -243,14 +354,14 @@ export function AccountDetailPanel({
         )}
       </div>
 
-      {/* Synthetic Message Log Table for Selected Account */}
+      {/* Message Log Table for Selected Account */}
       <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
         <div>
           <h3 className="font-display text-sm font-semibold text-slate-900">
             Account Message Log ({messages.length})
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Synthetic DM entries inspected by the rule engine for {account.handle}.
+            DM entries inspected by the rule engine for {account.handle}.
           </p>
         </div>
       </div>
@@ -267,81 +378,89 @@ export function AccountDetailPanel({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-xs">
-            {messages.map((msg) => {
-              const flagInfo = message_flags[msg.id];
-              const hasFlags = flagInfo && flagInfo.reasons.length > 0;
-              return (
-                <tr
-                  key={msg.id}
-                  className={hasFlags ? 'bg-red-50/35' : 'bg-white'}
-                >
-                  <td className="py-3 px-5 font-mono tabular-nums text-slate-600 whitespace-nowrap align-top">
-                    {formatTimestamp(msg.timestamp)}
-                  </td>
+            {messages.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 px-5 text-center text-slate-500">
+                  No messages logged for this account yet. Send events via the Webhook Ingestion API, Import Logs, or test controls.
+                </td>
+              </tr>
+            ) : (
+              messages.map((msg) => {
+                const flagInfo = message_flags[msg.id];
+                const hasFlags = flagInfo && flagInfo.reasons.length > 0;
+                return (
+                  <tr
+                    key={msg.id}
+                    className={hasFlags ? 'bg-red-50/35' : 'bg-white'}
+                  >
+                    <td className="py-3 px-5 font-mono tabular-nums text-slate-600 whitespace-nowrap align-top">
+                      {formatTimestamp(msg.timestamp)}
+                    </td>
 
-                  <td className="py-3 px-3 font-mono text-slate-700 whitespace-nowrap align-top">
-                    {msg.follower_id}
-                  </td>
+                    <td className="py-3 px-3 font-mono text-slate-700 whitespace-nowrap align-top">
+                      {msg.follower_id}
+                    </td>
 
-                  <td className="py-3 px-3 max-w-md align-top">
-                    <p className="text-slate-800 leading-relaxed">{msg.message_text}</p>
-                    {msg.link_url ? (
-                      <div className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-slate-600 break-all">
-                        <ExternalLink className="w-3 h-3 shrink-0 text-slate-400" aria-hidden="true" />
-                        <span
-                          className={
-                            flagInfo?.has_suspicious_link
-                              ? 'text-red-700 font-medium'
-                              : 'text-slate-600'
-                          }
-                        >
-                          {msg.link_url}
-                        </span>
+                    <td className="py-3 px-3 max-w-md align-top">
+                      <p className="text-slate-800 leading-relaxed">{msg.message_text}</p>
+                      {msg.link_url ? (
+                        <div className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-slate-600 break-all">
+                          <ExternalLink className="w-3 h-3 shrink-0 text-slate-400" aria-hidden="true" />
+                          <span
+                            className={
+                              flagInfo?.has_suspicious_link
+                                ? 'text-red-700 font-medium'
+                                : 'text-slate-600'
+                            }
+                          >
+                            {msg.link_url}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="mt-1 block text-[11px] text-slate-400">No link attached</span>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3 whitespace-nowrap align-top">
+                      <div
+                        className={`font-mono ${
+                          flagInfo?.has_new_device_or_location &&
+                          msg.device_id !== account.trusted_device_id
+                            ? 'text-red-700 font-medium'
+                            : 'text-slate-700'
+                        }`}
+                      >
+                        {msg.device_id}
                       </div>
-                    ) : (
-                      <span className="mt-1 block text-[11px] text-slate-400">No link attached</span>
-                    )}
-                  </td>
+                      <div
+                        className={
+                          flagInfo?.has_new_device_or_location &&
+                          msg.location !== account.home_location
+                            ? 'text-red-700 font-medium'
+                            : 'text-slate-500'
+                        }
+                      >
+                        {msg.location}
+                      </div>
+                    </td>
 
-                  <td className="py-3 px-3 whitespace-nowrap align-top">
-                    <div
-                      className={`font-mono ${
-                        flagInfo?.has_new_device_or_location &&
-                        msg.device_id !== account.trusted_device_id
-                          ? 'text-red-700 font-medium'
-                          : 'text-slate-700'
-                      }`}
-                    >
-                      {msg.device_id}
-                    </div>
-                    <div
-                      className={
-                        flagInfo?.has_new_device_or_location &&
-                        msg.location !== account.home_location
-                          ? 'text-red-700 font-medium'
-                          : 'text-slate-500'
-                      }
-                    >
-                      {msg.location}
-                    </div>
-                  </td>
-
-                  <td className="py-3 px-5 align-top">
-                    {hasFlags ? (
-                      <ul className="space-y-0.5 text-red-700 font-medium">
-                        {flagInfo.reasons.map((reason, idx) => (
-                          <li key={idx} className="whitespace-nowrap">
-                            · {reason}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="text-emerald-700">No anomaly</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                    <td className="py-3 px-5 align-top">
+                      {hasFlags ? (
+                        <ul className="space-y-0.5 text-red-700 font-medium">
+                          {flagInfo.reasons.map((reason, idx) => (
+                            <li key={idx} className="whitespace-nowrap">
+                              · {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-emerald-700">No anomaly</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

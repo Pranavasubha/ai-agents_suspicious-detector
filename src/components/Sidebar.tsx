@@ -6,6 +6,8 @@ import {
   LogIn,
   ShieldCheck,
   SlidersHorizontal,
+  Upload,
+  Webhook,
 } from 'lucide-react';
 import { NavSection } from '../types/simulation';
 
@@ -16,6 +18,7 @@ interface SidebarProps {
   alertCount: number;
   messageCount: number;
   loginCount: number;
+  webhookCount: number;
 }
 
 export function Sidebar({
@@ -25,6 +28,7 @@ export function Sidebar({
   alertCount,
   messageCount,
   loginCount,
+  webhookCount,
 }: SidebarProps) {
   const navItems: Array<{
     id: NavSection;
@@ -45,6 +49,17 @@ export function Sidebar({
       label: 'New ID Login',
       icon: LogIn,
       count: loginCount > 0 ? loginCount : undefined,
+    },
+    {
+      id: 'integrations',
+      label: 'Integrations & API',
+      icon: Webhook,
+      count: webhookCount > 0 ? webhookCount : undefined,
+    },
+    {
+      id: 'import',
+      label: 'Import Logs',
+      icon: Upload,
     },
     {
       id: 'logs',
@@ -78,7 +93,7 @@ export function Sidebar({
               Activity Detector
             </div>
             <div className="text-xs text-slate-500 truncate">
-              Security Awareness Demo
+              Live Security Console
             </div>
           </div>
         </div>
@@ -127,11 +142,10 @@ export function Sidebar({
           <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" aria-hidden="true" />
           <div className="text-xs text-slate-600 leading-relaxed">
             <p className="font-medium text-slate-800 mb-1">
-              Synthetic Simulation Only
+              Persistent Backend Mode
             </p>
             <p>
-              All influencer handles, follower IDs, device IDs, and message logs are
-              generated locally. No live social platforms or real accounts are connected.
+              Accounts, logs, webhook rules, and alerts persist on the server. Connect live webhook relays or import CSV/JSON logs anytime.
             </p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { Bell, ChevronRight } from 'lucide-react';
+import { Bell, ChevronRight, Download } from 'lucide-react';
 import { AlertRecord } from '../types/simulation';
 import { StatusIndicator } from './StatusBadge';
 
@@ -22,12 +22,24 @@ export function AlertHistoryPanel({
   onSelectAccount,
   compact = false,
 }: AlertHistoryPanelProps) {
+  function handleExportJson() {
+    const blob = new Blob([JSON.stringify(alerts, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alert-history-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <section
       aria-label="Alert history"
       className="bg-white border border-slate-200 rounded-xl overflow-hidden"
     >
-      <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
+      <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-base font-semibold text-slate-900">
             Alert History
@@ -36,9 +48,21 @@ export function AlertHistoryPanel({
             Dual owner and follower alerts generated whenever an account crosses the suspicion threshold.
           </p>
         </div>
-        <span className="font-mono text-xs tabular-nums text-slate-500">
-          {alerts.length} recorded
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs tabular-nums text-slate-500">
+            {alerts.length} recorded
+          </span>
+          {!compact && alerts.length > 0 && (
+            <button
+              type="button"
+              onClick={handleExportJson}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 whitespace-nowrap"
+            >
+              <Download className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Export JSON</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {alerts.length === 0 ? (
