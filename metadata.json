@@ -1,0 +1,6 @@
+{
+  "name": "Suspicious Activity Detector for Social Media Accounts",
+  "description": "A security-awareness simulation demonstrating rule-based detection of compromised influencer accounts sending automated spam and phishing messages using synthetic data.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
